@@ -1,3 +1,800 @@
 
+Index · HTML
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tính cắt ống thép tối ưu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#17202B; --muted:#5E6B7A; --line:#D3D9E0;
+  --steel-a:#B9C4CF; --steel-b:#8796A6; --steel-c:#6A7A8B;
+  --accent:#F2B705; --accent-ink:#231A00; --waste:#C8443A; --keep:#2F7D4F; --field:#F6F8FA;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161C; --panel:#19212A; --ink:#E5EAEF; --muted:#9AA7B4; --line:#2C3743;
+    --steel-a:#7F8E9D; --steel-b:#5D6C7C; --steel-c:#46535F;
+    --accent:#F5C23A; --accent-ink:#1E1600; --waste:#E36A5F; --keep:#62B982; --field:#121920;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161C; --panel:#19212A; --ink:#E5EAEF; --muted:#9AA7B4; --line:#2C3743;
+  --steel-a:#7F8E9D; --steel-b:#5D6C7C; --steel-c:#46535F;
+  --accent:#F5C23A; --accent-ink:#1E1600; --waste:#E36A5F; --keep:#62B982; --field:#121920;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+h1{font-size:clamp(24px,3.4vw,34px);line-height:1.1;margin:0;font-weight:800;letter-spacing:-.02em}
+.sub{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.stockbar{height:14px;border-radius:7px;width:min(320px,100%);
+  background:linear-gradient(180deg,var(--steel-a),var(--steel-b) 55%,var(--steel-c));position:relative}
+.stockbar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(20% - 2px),var(--accent) calc(20% - 2px) 20%)}
+.grid{display:grid;gap:18px}
+@media (min-width:980px){.grid{grid-template-columns:minmax(360px,440px) 1fr;align-items:start}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.panel h2{font-size:17px;margin:0 0 12px;font-weight:700}
+.settings{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 12px;margin-bottom:18px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+input,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tablewrap{overflow-x:auto;max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:8px}
+table.list{border-collapse:collapse;width:100%;min-width:360px}
+table.list th{position:sticky;top:0;background:var(--panel);font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:6px;border-bottom:1px solid var(--line);z-index:1}
+table.list td{padding:3px 4px;border-bottom:1px solid var(--line)}
+table.list td input{padding:5px 6px;border-color:transparent;background:transparent}
+table.list td input:hover{border-color:var(--line)}
+table.list .n{width:74px}.list .q{width:66px}.list .x{width:30px}
+table.list td.idx{color:var(--muted);font-size:12px;width:28px;text-align:right;padding-right:6px}
+.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:6px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.btn:hover{border-color:var(--steel-b)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:16px;padding:11px 16px;width:100%;margin-top:14px}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.small{padding:5px 10px;font-size:13px;font-weight:500}
+.del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px}
+.del:hover{color:var(--waste)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.meta{font-size:13px;color:var(--muted);margin:8px 0}
+.paste{margin-top:10px;display:none}
+.paste.open{display:block}
+.paste textarea{height:130px;font-size:13px}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0}
+.err{background:color-mix(in srgb,var(--waste) 12%,transparent);border-left:3px solid var(--waste);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:14px}
+.err ul{margin:6px 0 0;padding-left:18px}
+.empty{padding:40px 12px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+.totals{display:flex;flex-wrap:wrap;gap:10px 28px;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.totals div{display:flex;flex-direction:column}
+.totals b{font-size:28px;line-height:1.1;font-weight:800}
+.totals span{font-size:13px;color:var(--muted)}
+.totals .main b{color:var(--ink);font-size:40px}
+.stale{background:color-mix(in srgb,var(--accent) 22%,transparent);padding:8px 12px;border-radius:6px;font-size:14px;margin-bottom:12px}
+.group{margin-top:22px}
+.ghead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-bottom:10px}
+.ghead h3{margin:0;font-size:20px;font-weight:800}
+.ghead .gstat{font-size:14px;color:var(--muted)}
+.ghead .gstat b{color:var(--ink)}
+.badge{display:inline-block;font-size:12.5px;padding:2px 8px;border-radius:20px;margin-left:6px;font-weight:600}
+.badge.ok{background:color-mix(in srgb,var(--keep) 18%,transparent);color:var(--keep)}
+.badge.lb{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--ink)}
+.pat{display:grid;grid-template-columns:62px 1fr;gap:12px;padding:12px 0;border-top:1px dashed var(--line)}
+.times{text-align:center;align-self:start;border:2px solid var(--ink);border-radius:8px;padding:4px 0}
+.times b{display:block;font-size:22px;line-height:1.1;font-weight:800}
+.times span{font-size:11px;color:var(--muted)}
+.bar{display:flex;height:34px;border-radius:5px;overflow:hidden;background:var(--field);border:1px solid var(--line)}
+.bar .pc{background:linear-gradient(180deg,var(--steel-a),var(--steel-b) 55%,var(--steel-c));color:#fff;font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.45);min-width:2px}
+.bar .pc:nth-child(4n+3){filter:brightness(.92)}
+.bar .kf{background:var(--accent);min-width:2px}
+.bar .tr{background:repeating-linear-gradient(135deg,var(--line) 0 4px,transparent 4px 8px)}
+.bar .lf{flex:1 1 auto;display:flex;align-items:center;justify-content:center;font-size:11.5px;overflow:hidden;white-space:nowrap}
+.bar .lf.w{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--waste) 30%,transparent) 0 5px,transparent 5px 10px);color:var(--waste)}
+.bar .lf.k{background:color-mix(in srgb,var(--keep) 16%,transparent);color:var(--keep)}
+.pinfo{font-size:14px;margin-top:6px}
+.pinfo .left.w{color:var(--waste);font-weight:600}.pinfo .left.k{color:var(--keep);font-weight:600}
+details.codes{margin-top:4px;font-size:13px;color:var(--muted)}
+details.codes summary{cursor:pointer}
+details.codes ol{margin:4px 0 0;padding-left:22px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media (max-width:520px){.settings{grid-template-columns:1fr 1fr}.pat{grid-template-columns:50px 1fr}.totals .main b{font-size:32px}}
+@media print{.inputs,.actions,.btn{display:none!important}.grid{display:block}.panel{border:0}body{background:#fff}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.list .sk{width:34px;text-align:center}
+.list .sk input{width:auto;accent-color:var(--accent)}
+tr.skipped td input:not([type=checkbox]){text-decoration:line-through;color:var(--muted)}
+.cfgwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
+table.cfg{border-collapse:collapse;width:100%;min-width:440px;font-size:13px}
+table.cfg small.warn{color:var(--waste);font-weight:600}
+table.cfg th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:6px;border-bottom:1px solid var(--line)}
+table.cfg td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.cfg td.tn{font-weight:600;line-height:1.3;max-width:170px;word-break:break-word}
+table.cfg td.tn small{display:block;font-weight:400;color:var(--muted)}
+table.cfg .n{width:78px}.cfg .k{width:58px}
+table.cfg input{padding:5px 6px}
+h2.sec{margin-top:18px}
+.chk{display:flex;gap:8px;align-items:center;font-size:13.5px;margin:8px 0 0;color:var(--ink)}
+.chk input{width:auto;accent-color:var(--accent)}
+.times.rem{border-style:dashed;border-color:var(--keep)}
+.times.rem span{color:var(--keep)}
+.pat .src{font-size:12px;color:var(--muted);margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Tính cắt ống thép tối ưu</h1>
+      <p class="sub">Nhập hoặc nhập thẳng file BOM đường ống. Ứng dụng tách theo từng quy cách và vật liệu ống, ghép các đoạn lên cây sao cho dùng ít cây nhất, ưu tiên tận dụng đoạn tồn kho.</p>
+    </div>
+    <div class="stockbar" aria-hidden="true"></div>
+  </header>
+ 
+  <div class="grid">
+    <section class="panel inputs">
+      <h2>Thông số mặc định</h2>
+      <div class="settings">
+        <label class="f">Chiều dài cây ống (mm)<input id="sStock" type="number" min="100" step="1"></label>
+        <label class="f">Bề dày lưỡi cưa (mm)<input id="sKerf" type="number" min="0" step="0.5"></label>
+        <label class="f">Cắt bỏ đầu cây (mm)<input id="sTrim" type="number" min="0" step="1"></label>
+        <label class="f">Đoạn thừa ≥ (mm) giữ lại tồn kho<input id="sReuse" type="number" min="0" step="10"></label>
+      </div>
+ 
+      <h2>Danh sách đoạn cần cắt</h2>
+      <div class="row">
+        <button class="btn small" id="bImport">Nhập file Excel / BOM</button>
+        <button class="btn small" id="bPaste">Dán từ Excel</button>
+        <button class="btn small" id="bAdd">Thêm dòng</button>
+        <button class="btn small" id="bSample">Dữ liệu mẫu</button>
+        <button class="btn small" id="bClear">Xoá hết</button>
+        <input type="file" id="fileIn" accept=".xlsx,.xlsm,.xls,.csv" hidden>
+      </div>
+      <p class="hint">File BOM có cột <b>Length</b>, <b>Description</b> (quy cách), <b>Drawing No.</b>, <b>Spool No.</b>, <b>Ghi chú</b> được nhận tự động. Mỗi dòng mặc định cắt <b>1 đoạn</b>; sửa ở cột <b>Số lượng</b> nếu cần. Ghi chú chỉ để tham khảo (rê chuột lên dòng để xem). Muốn loại dòng nào thì tích cột <b>Bỏ</b>.</p>
+      <div class="paste" id="pasteBox">
+        <p class="hint">Dán cả bảng có dòng tiêu đề, hoặc chỉ các cột theo thứ tự: <b>Loại ống</b>, <b>Chiều dài (mm)</b>, <b>Số lượng</b>, <b>Mã đoạn</b>.</p>
+        <textarea id="pasteTxt" placeholder="Ø60x3	2450	4	TR-01&#10;Ø60x3	1320	6	TR-02"></textarea>
+        <div class="row" style="margin-top:6px"><button class="btn small" id="bPasteAdd">Thêm vào danh sách</button><button class="btn small" id="bPasteCancel">Đóng</button></div>
+      </div>
+      <p class="meta" id="rowMeta"></p>
+      <div class="tablewrap">
+        <table class="list">
+          <thead><tr><th></th><th>Loại ống</th><th class="n">Dài (mm)</th><th class="q" title="Số lượng đoạn cần cắt, mặc định 1">Số lượng</th><th>Mã đoạn</th><th class="sk" title="Bỏ qua dòng này khi tính">Bỏ</th><th class="x"></th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+ 
+      <h2 class="sec">Cấu hình theo từng loại ống</h2>
+      <p class="hint">Để trống thì dùng thông số mặc định. Đoạn tồn kho nhập dạng <b>2500x2, 1800</b> (2 đoạn 2500 mm và 1 đoạn 1800 mm), được dùng trước cây mới.</p>
+      <div id="cfg"></div>
+      <button class="btn primary" id="bRun">Tính phương án cắt</button>
+    </section>
+ 
+    <section class="panel" id="results">
+      <div class="empty"><strong>Chưa có phương án cắt</strong>Nhập danh sách hoặc file BOM bên trái rồi bấm "Tính phương án cắt". Chưa có dữ liệu? Bấm "Dữ liệu mẫu" để thử.</div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+ 
+<script>
+/* ---------- Solver (1D cutting stock) ----------
+   Units: tenths of a mm. Each piece consumes (length + kerf); a bar's capacity is (usable + kerf). */
+function maxFill(w, cnt, cap){
+  if (cap <= 0) return new Array(w.length).fill(0);
+  const items=[];
+  for(let i=0;i<w.length;i++){ let c=cnt[i], k=1; while(c>0){ const t=Math.min(k,c); if(t*w[i]<=cap) items.push([i,t,t*w[i]]); c-=t; k*=2; } }
+  const reach=new Uint8Array(cap+1), from=new Int32Array(cap+1), prev=new Int32Array(cap+1);
+  reach[0]=1;
+  for(let j=0;j<items.length;j++){
+    const wt=items[j][2];
+    for(let c=cap;c>=wt;c--){ if(!reach[c] && reach[c-wt]){ reach[c]=1; from[c]=j; prev[c]=c-wt; } }
+    if(reach[cap]) break;
+  }
+  let best=cap; while(best>0 && !reach[best]) best--;
+  const use=new Array(w.length).fill(0);
+  for(let c=best;c>0;c=prev[c]){ const it=items[from[c]]; use[it[0]]+=it[1]; }
+  return use;
+}
+function seqHeuristic(w, cnt0, C, forceLargest){
+  const cnt=cnt0.slice(), pats=[];
+  let left=cnt.reduce((a,b)=>a+b,0);
+  while(left>0){
+    let use;
+    if(forceLargest){ const i0=cnt.findIndex(c=>c>0); cnt[i0]--; use=maxFill(w,cnt,C-w[i0]); use[i0]++; cnt[i0]++; }
+    else use=maxFill(w,cnt,C);
+    if(!use.some(x=>x>0)) break;
+    let times=Infinity; use.forEach((u,i)=>{ if(u>0) times=Math.min(times, Math.floor(cnt[i]/u)); });
+    use.forEach((u,i)=>{ cnt[i]-=u*times; left-=u*times; });
+    pats.push({use,times});
+  }
+  return pats;
+}
+function fitHeuristic(w, cnt, C, bestFit){
+  const bins=[];
+  for(let i=0;i<w.length;i++) for(let k=0;k<cnt[i];k++){
+    let pick=-1;
+    for(let b=0;b<bins.length;b++){ if(bins[b].rem>=w[i]){ if(!bestFit){pick=b;break;} if(pick<0||bins[b].rem<bins[pick].rem) pick=b; } }
+    if(pick<0){ bins.push({rem:C,use:new Array(w.length).fill(0)}); pick=bins.length-1; }
+    bins[pick].rem-=w[i]; bins[pick].use[i]++;
+  }
+  const m=new Map();
+  for(const b of bins){ const key=b.use.join(','); if(m.has(key)) m.get(key).times++; else m.set(key,{use:b.use,times:1}); }
+  return [...m.values()];
+}
+function lowerBound(w,cnt,C){
+  const sumW=w.reduce((a,x,i)=>a+x*cnt[i],0);
+  let big=0; w.forEach((x,i)=>{ if(2*x>C) big+=cnt[i]; });
+  let LB=Math.max(Math.ceil(sumW/C), big);
+  for(const Kv of new Set(w.filter(x=>2*x<=C))){
+    let n1=0,n2=0,s2=0,s3=0;
+    w.forEach((x,i)=>{ if(x>C-Kv) n1+=cnt[i]; else if(2*x>C){ n2+=cnt[i]; s2+=x*cnt[i]; } else if(x>=Kv) s3+=x*cnt[i]; });
+    LB=Math.max(LB, n1+n2+Math.max(0,Math.ceil((s3-(n2*C-s2))/C)));
+  }
+  return LB;
+}
+/* pieces: [{len, code}], cfg: {stock, kerf, trim, rem:[lengths], reuse} */
+function solveGroup(pieces, cfg){
+  const K=10, kerf=Math.round(cfg.kerf*K), C=Math.round((cfg.stock-cfg.trim)*K)+kerf;
+  const byLen=new Map();
+  for(const p of pieces){ if(!byLen.has(p.len)) byLen.set(p.len,[]); byLen.get(p.len).push(p.code); }
+  const lens=[...byLen.keys()].sort((a,b)=>b-a);
+  const w=lens.map(l=>Math.round(l*K)+kerf), cnt=lens.map(l=>byLen.get(l).length);
+  // 1) remnants from stock first (largest remnant first)
+  const remPats=[];
+  for(const r of (cfg.rem||[]).slice().sort((a,b)=>b-a)){
+    if(!cnt.some(c=>c>0)) break;
+    const use=maxFill(w,cnt,Math.round(r*K)+kerf);
+    if(!use.some(u=>u>0)) continue;
+    use.forEach((u,i)=>cnt[i]-=u);
+    remPats.push({use,times:1,stock:r,fromRem:true});
+  }
+  // 2) new bars
+  let best=[], LB=0;
+  if(cnt.some(c=>c>0)){
+    LB=lowerBound(w,cnt,C);
+    let bs=null;
+    for(const pats of [seqHeuristic(w,cnt,C,true), seqHeuristic(w,cnt,C,false), fitHeuristic(w,cnt,C,false), fitHeuristic(w,cnt,C,true)]){
+      let bars=0, sq=0;
+      for(const p of pats){ const used=p.use.reduce((a,u,i)=>a+u*w[i],0); bars+=p.times; sq+=p.times*(C-used)**2; }
+      if(!bs || bars<bs.bars || (bars===bs.bars && sq>bs.sq)){ best=pats; bs={bars,sq}; }
+    }
+  }
+  const queues=lens.map(l=>byLen.get(l).slice());
+  const build=(p,stock,fromRem)=>{
+    const cut=[]; p.use.forEach((u,i)=>{ for(let k=0;k<u;k++) cut.push(lens[i]); });
+    const sumLen=cut.reduce((a,b)=>a+b,0);
+    const usable=fromRem? stock : stock-cfg.trim;
+    const leftover=Math.max(0, Math.round((usable-sumLen-cfg.kerf*cut.length)*10)/10);
+    const bars=[]; for(let t=0;t<p.times;t++) bars.push(cut.map(l=>({len:l, code:queues[lens.indexOf(l)].shift()||''})));
+    return {cut, times:p.times, sumLen, leftover, bars, stock, fromRem};
+  };
+  const newPats=best.map(p=>build(p,cfg.stock,false)).sort((a,b)=> b.times-a.times || a.leftover-b.leftover);
+  const remBuilt=remPats.map(p=>build(p,p.stock,true));
+  const patterns=newPats.concat(remBuilt);
+  const nBars=newPats.reduce((a,p)=>a+p.times,0);
+  const nRem=remBuilt.length;
+  const totalLen=pieces.reduce((a,p)=>a+p.len,0);
+  const lenNew=newPats.reduce((a,p)=>a+p.sumLen*p.times,0);
+  let keep=0, scrap=0;
+  patterns.forEach(p=>{ if(p.leftover>=cfg.reuse && p.leftover>0) keep+=p.leftover*p.times; else scrap+=p.leftover*p.times; });
+  return {patterns, nBars, nRem, LB, totalLen, nPieces:pieces.length, keep, scrap, eff: nBars? lenNew/(nBars*cfg.stock) : 0};
+}
+ 
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('vi-VN');
+const fmt = n => nf.format(Math.round(n*10)/10);
+const fmt1 = n => new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1,minimumFractionDigits:1}).format(n);
+const fmt2 = n => new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2,minimumFractionDigits:2}).format(n);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ 
+let S = {stock:6000, kerf:3, trim:0, reuse:500};
+let rows = [];      // {type,len,qty,code,note,skip}
+let G = {};         // per-type config {stock,kerf,rem,uw} as strings; blank = default
+let result = null, dirty = false, downloads = null, cfgTypes = [];
+const KEY='cat-ong-v2';
+ 
+function load(){
+  try{
+    let d = JSON.parse(localStorage.getItem(KEY)||'null');
+    if(!d){ const old=JSON.parse(localStorage.getItem('cat-ong-v1')||'null'); if(old) d={S:old.S, rows:old.rows, G:{}}; }
+    if(d){ S={...S,...d.S}; rows=Array.isArray(d.rows)?d.rows:[]; G=d.G||{}; }
+  }catch(e){}
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({S, rows, G})); }catch(e){} }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2600); }
+ 
+function parseNum(v){
+  if (typeof v === 'number') return v;
+  let s = String(v ?? '').replace(/\s|mm/gi,'');
+  if (!s) return NaN;
+  if (/^\d{1,3}([.,]\d{3})+$/.test(s)) s = s.replace(/[.,]/g,'');
+  else s = s.replace(',', '.');
+  return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+}
+/* Decimal values such as kg/m: "3.929", "3,929" and 3.929 all mean 3.929 (never thousands). */
+function parseDec(v){
+  if (typeof v === 'number') return v;
+  const s=String(v??'').replace(/\s/g,'').replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+}
+function normType(t){ return String(t||'').trim().replace(/\s+/g,' ') || 'Ống (chưa đặt tên)'; }
+function parseRem(s){
+  const out=[];
+  String(s||'').split(/[,;\n]+/).forEach(part=>{
+    const m=part.trim().match(/^([\d.,]+)\s*(?:[x×*]\s*(\d+))?$/i);
+    if(!m) return; const L=parseNum(m[1]); const n=m[2]?parseInt(m[2]):1;
+    if(L>0) for(let i=0;i<n && i<500;i++) out.push(L);
+  });
+  return out;
+}
+function cfgOf(t){
+  const g=G[t]||{}, st=parseNum(g.stock), kf=parseNum(g.kerf), u=parseDec(g.uw), uf=parseDec(g.uwFile), us=stdKgm(t);
+  const uw = u>0 ? u : uf>0 ? uf : us;
+  return {stock: st>0?st:S.stock, kerf: kf>=0?kf:S.kerf, trim:S.trim, reuse:S.reuse, rem:parseRem(g.rem), uw,
+          uwSrc: u>0?'nhập tay':uf>0?'file BOM':us?'công thức ASME':''};
+}
+/* Standard mass per metre from OD x wall in the type label: (OD - t) x t x 0.02466 kg/m (ASME B36.10/B36.19 basis) */
+function stdKgm(t){
+  const m=String(t).match(/OD\s*([\d.]+)\s*[x×]\s*([\d.]+)/i); if(!m) return 0;
+  const D=parseFloat(m[1]), w=parseFloat(m[2]); return D>w&&w>0 ? Math.round((D-w)*w*0.02466*100)/100 : 0;
+}
+/* Short label from a BOM description, e.g. "A312-TP316/316L S10S BE · OD273.1x4.19" */
+function specLabel(desc){
+  const d=String(desc||'').replace(/\s+/g,' ').trim();
+  if(!d) return '';
+  const grade=(d.match(/\bA\d{3}[-\w\/]*/i)||[])[0];
+  const od=d.match(/OD\s*([\d.]+)\s*[x×]\s*([\d.]+)/i);
+  const sch=(d.match(/\bS(?:TD|XS|XXS|\d+S?)\b/)||[])[0];
+  const end=(d.match(/\b(BE|PE|TE)\b/)||[])[0];
+  if(!od) return d;
+  return [grade, sch, end].filter(Boolean).join(' ') + ' · OD' + od[1] + 'x' + od[2];
+}
+ 
+/* ---------- Input table ---------- */
+function activeTypes(){
+  const set=new Map();
+  rows.forEach(r=>{ if(r.skip) return; if(!(parseNum(r.len)>0)) return; const t=normType(r.type); const q=parseNum(r.qty)>0?parseNum(r.qty):0; set.set(t,(set.get(t)||0)+q); });
+  return set;
+}
+function renderRows(){
+  $('#tbody').innerHTML = rows.map((r,i)=>`<tr class="${r.skip?'skipped':''}" ${r.note?`title="Ghi chú: ${esc(r.note)}"`:''}>
+    <td class="idx">${i+1}</td>
+    <td><input data-i="${i}" data-k="type" value="${esc(r.type)}" placeholder="VD: Ø60x3"></td>
+    <td class="n"><input data-i="${i}" data-k="len" value="${esc(r.len)}" inputmode="decimal"></td>
+    <td class="q"><input data-i="${i}" data-k="qty" value="${esc(r.qty)}" inputmode="numeric"></td>
+    <td><input data-i="${i}" data-k="code" value="${esc(r.code)}"></td>
+    <td class="sk"><input type="checkbox" data-i="${i}" data-k="skip" ${r.skip?'checked':''} aria-label="Bỏ qua dòng ${i+1}"></td>
+    <td class="x"><button class="del" data-del="${i}" aria-label="Xoá dòng ${i+1}">✕</button></td></tr>`).join('');
+  updateMeta(); renderCfg();
+}
+function updateMeta(){
+  const types=activeTypes(); let pcs=0; types.forEach(v=>pcs+=v);
+  const sk=rows.filter(r=>r.skip).length;
+  $('#rowMeta').textContent = rows.length ? `${rows.length} dòng, ${fmt(pcs)} đoạn cần cắt, ${types.size} loại ống${sk?`, ${sk} dòng bỏ qua`:''}` : 'Danh sách đang trống.';
+}
+function renderCfg(){
+  const types=activeTypes(); cfgTypes=[...types.keys()];
+  if(!cfgTypes.length){ $('#cfg').innerHTML='<p class="hint">Chưa có loại ống nào.</p>'; return; }
+  $('#cfg').innerHTML = `<div class="cfgwrap"><table class="cfg"><thead><tr><th>Loại ống</th><th class="n">Cây dài (mm)</th><th class="k">Lưỡi cưa</th><th class="k">kg/m</th><th>Đoạn tồn kho (mm)</th></tr></thead><tbody>${
+    cfgTypes.map((t,i)=>{ const g=G[t]||{}, c=cfgOf(t), us=stdKgm(t), dev=us&&c.uw?Math.abs(c.uw-us)/us:0;
+      return `<tr><td class="tn">${esc(t)}<small>${fmt(types.get(t))} đoạn${c.uw?`, ${fmt2(c.uw)} kg/m (${c.uwSrc})`:''}</small>${dev>0.02?`<small class="warn">⚠ Khác tiêu chuẩn ${fmt2(us)} kg/m (${fmt1(dev*100)}%)</small>`:''}</td>
+      <td><input data-t="${i}" data-f="stock" value="${esc(g.stock||'')}" placeholder="${esc(S.stock)}" inputmode="decimal"></td>
+      <td><input data-t="${i}" data-f="kerf" value="${esc(g.kerf??'')}" placeholder="${esc(S.kerf)}" inputmode="decimal"></td>
+      <td class="k"><input data-t="${i}" data-f="uw" value="${esc(g.uw||'')}" placeholder="${c.uw?esc(fmt2(parseDec(g.uwFile)>0?parseDec(g.uwFile):us)):''}" inputmode="decimal"></td>
+      <td><input data-t="${i}" data-f="rem" value="${esc(g.rem||'')}" placeholder="VD: 2500x2, 1800"></td></tr>`; }).join('')
+  }</tbody></table></div>`;
+}
+function markDirty(){ dirty = true; const s=$('#staleNote'); if(s) s.hidden=false; }
+ 
+$('#tbody').addEventListener('input', e=>{
+  const el=e.target; if(!el.dataset.k) return; const i=+el.dataset.i;
+  if(el.type==='checkbox'){ rows[i].skip=el.checked; el.closest('tr').classList.toggle('skipped',el.checked); renderCfg(); }
+  else rows[i][el.dataset.k]=el.value;
+  save(); updateMeta(); markDirty();
+});
+$('#tbody').addEventListener('change', e=>{ const k=e.target.dataset.k; if(k==='type'||k==='len'||k==='qty') renderCfg(); });
+$('#tbody').addEventListener('click', e=>{
+  const b=e.target.closest('[data-del]'); if(!b) return;
+  rows.splice(+b.dataset.del,1); save(); renderRows(); markDirty();
+});
+$('#cfg').addEventListener('change', e=>{ if(e.target.dataset.f==='uw') renderCfg(); });
+$('#cfg').addEventListener('input', e=>{
+  const el=e.target; if(!el.dataset.f) return; const t=cfgTypes[+el.dataset.t];
+  G[t]=G[t]||{}; G[t][el.dataset.f]=el.value; save(); markDirty();
+});
+$('#bAdd').onclick = ()=>{
+  const last = rows[rows.length-1];
+  rows.push({type: last? last.type : '', len:'', qty:'1', code:''}); save(); renderRows(); markDirty();
+  const inputs = document.querySelectorAll(`[data-i="${rows.length-1}"]`); (inputs[1]||inputs[0])?.focus();
+};
+$('#bClear').onclick = ()=>{ if(!rows.length) return; if(confirm('Xoá toàn bộ danh sách đoạn ống?')){ rows=[]; save(); renderRows(); markDirty(); } };
+$('#bSample').onclick = ()=>{
+  rows = [
+    {type:'Ø60x3',len:'2450',qty:'8',code:'TR-01'},{type:'Ø60x3',len:'1320',qty:'10',code:'TR-02'},
+    {type:'Ø60x3',len:'980',qty:'14',code:'TR-03'},{type:'Ø60x3',len:'3550',qty:'5',code:'TR-04'},
+    {type:'Ø60x3',len:'610',qty:'12',code:'TR-05'},
+    {type:'Ø90x3.5',len:'4200',qty:'3',code:'GIA-01'},{type:'Ø90x3.5',len:'1750',qty:'7',code:'GIA-02'},
+    {type:'Ø90x3.5',len:'2900',qty:'4',code:'GIA-03'},{type:'Ø90x3.5',len:'850',qty:'9',code:'GIA-04'},
+    {type:'Ø42x2.5',len:'1500',qty:'16',code:'LC-01'},{type:'Ø42x2.5',len:'2200',qty:'6',code:'LC-02'},{type:'Ø42x2.5',len:'720',qty:'11',code:'LC-03'}
+  ];
+  save(); renderRows(); markDirty(); toast('Đã nạp dữ liệu mẫu');
+};
+ 
+/* ---------- Paste / import ---------- */
+function rowsFromCells(table){
+  const out=[];
+  for(const raw of table){
+    const cells = (raw||[]).map(c => String(c ?? '').trim());
+    if (!cells.some(c=>c)) continue;
+    const k = cells.findIndex(c => c!=='' && !isNaN(parseNum(c)));
+    if (k < 0) continue;
+    const len = parseNum(cells[k]); if (!(len>0)) continue;
+    const qn = parseNum(cells[k+1]);
+    out.push({type:cells.slice(0,k).filter(Boolean).join(' '), len:String(len), qty:String(qn>0?qn:1), code:cells.slice(qn>0?k+2:k+1).filter(Boolean).join(' ')});
+  }
+  return {rows:out, bom:false};
+}
+/* Detects a header row (BOM format) and maps columns by name; falls back to positional parsing. */
+function parseTable(aoa){
+  const norm=v=>String(v??'').toLowerCase().replace(/\s+/g,' ').trim();
+  for(let h=0; h<Math.min(25,aoa.length); h++){
+    const hdr=(aoa[h]||[]).map(norm);
+    const find=(re,skip=[])=>hdr.findIndex((c,i)=>c && re.test(c) && !skip.includes(i));
+    const iLen=find(/length|chiều dài|^dài/);
+    if(iLen<0) continue;
+    const iQty=find(/số lượng|^sl$|^qty|^quantity$/,[iLen]);   // PT No is a part number, not a quantity
+    const iDesc=find(/description|quy cách|loại ống|^spec/,[iLen]);
+    if(iQty<0 && iDesc<0) continue;
+    const iDwg=find(/drawing|bản vẽ/), iSpool=find(/spool/), iCode=find(/mã đoạn|^code|^tag/),
+          iNote=find(/ghi chú|^note|remark/), iUW=find(/unit ?weight|kg\/m|trọng lượng đơn vị/);
+    const out=[], uw={};
+    for(let r=h+1; r<aoa.length; r++){
+      const row=aoa[r]||[];
+      const len=parseNum(row[iLen]); if(!(len>0)) continue;
+      const q=iQty>=0?parseNum(row[iQty]):NaN;
+      const desc=iDesc>=0?row[iDesc]:'';
+      const type=specLabel(desc)||'Ống (chưa đặt tên)';
+      const code=[iDwg>=0?row[iDwg]:'', iSpool>=0?row[iSpool]:'', iCode>=0?row[iCode]:''].map(x=>String(x??'').trim()).filter(Boolean).join(' / ');
+      const note=iNote>=0?String(row[iNote]??'').replace(/\s+/g,' ').trim():'';
+      out.push({type, len:String(len), qty:String(q>0?q:1), code, note, skip:false});   // notes are informational only
+      const u=iUW>=0?parseNum(row[iUW]):NaN; if(u>0 && !uw[type]) uw[type]=u;
+    }
+    return {rows:out, bom:true, uw};
+  }
+  return rowsFromCells(aoa);
+}
+function addRows(res, source){
+  if(!res.rows.length){ toast('Không đọc được dòng nào. Kiểm tra lại tiêu đề cột hoặc thứ tự cột.'); return false; }
+  const real=rows.filter(r=>r.type||r.len||r.code);
+  let replace=false;
+  if(real.length) replace=confirm(`Đang có ${real.length} dòng. Bấm OK để THAY THẾ bằng ${res.rows.length} dòng mới, Cancel để THÊM vào cuối danh sách.`);
+  rows=(replace?[]:real).concat(res.rows);
+  if(res.uw) for(const t in res.uw){ G[t]=G[t]||{}; G[t].uwFile=res.uw[t]; if(parseDec(G[t].uw)===res.uw[t]) G[t].uw=''; }
+  save(); renderRows(); markDirty();
+  toast(`Đã nhập ${res.rows.length} dòng${source?` từ ${source}`:''}`);
+  return true;
+}
+$('#bPaste').onclick = ()=>{ $('#pasteBox').classList.toggle('open'); $('#pasteTxt').focus(); };
+$('#bPasteCancel').onclick = ()=> $('#pasteBox').classList.remove('open');
+$('#bPasteAdd').onclick = ()=>{
+  const txt=$('#pasteTxt').value;
+  const table=txt.split(/\r?\n/).map(l => l.includes('\t') ? l.split('\t') : l.split(/;|\s{2,}|\|/));
+  if(addRows(parseTable(table))){ $('#pasteTxt').value=''; $('#pasteBox').classList.remove('open'); }
+};
+$('#bImport').onclick = ()=>{ if(!window.XLSX){ toast('Chưa tải được thư viện Excel. Hãy dùng "Dán từ Excel".'); return; } $('#fileIn').click(); };
+$('#fileIn').onchange = async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(), {type:'array'});
+    let best=null;
+    for(const name of wb.SheetNames){   // pick the first sheet that yields rows
+      const res=parseTable(XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:''}));
+      if(res.rows.length){ best=res; break; }
+    }
+    addRows(best||{rows:[]}, f.name);
+  }catch(err){ toast('Không đọc được file: '+err.message); }
+  e.target.value='';
+};
+ 
+/* ---------- Settings ---------- */
+const sMap = {sStock:'stock', sKerf:'kerf', sTrim:'trim', sReuse:'reuse'};
+for(const id in sMap){
+  const el=document.getElementById(id);
+  el.addEventListener('input', ()=>{ const v=parseNum(el.value); if(v>=0){ S[sMap[id]]=v; save(); markDirty(); } });
+  el.addEventListener('change', renderCfg);
+}
+ 
+/* ---------- Run ---------- */
+$('#bRun').onclick = async ()=>{
+  const errs=[], groups=new Map();
+  rows.forEach((r,i)=>{
+    if(r.skip) return;
+    if(!String(r.type||'').trim() && !String(r.len||'').trim() && !String(r.code||'').trim()) return;
+    const len=parseNum(r.len), qty=parseNum(r.qty);
+    if(!(len>0)){ errs.push(`Dòng ${i+1}: chiều dài "${r.len}" không hợp lệ.`); return; }
+    if(!(qty>0) || qty%1){ errs.push(`Dòng ${i+1}: số lượng "${r.qty}" phải là số nguyên dương.`); return; }
+    const t=normType(r.type), c=cfgOf(t), usable=c.stock-c.trim;
+    if(len>usable){ errs.push(`Dòng ${i+1}: đoạn ${fmt(len)} mm dài hơn cây ${fmt(c.stock)} mm của loại "${t}". Tăng "Cây dài" cho loại ống này.`); return; }
+    if(!groups.has(t)) groups.set(t,[]);
+    const L=Math.round(len*10)/10;
+    for(let k=0;k<qty;k++) groups.get(t).push({len:L, code:String(r.code||'').trim()});
+  });
+  const total=[...groups.values()].reduce((a,g)=>a+g.length,0);
+  if(!errs.length && !total) errs.push('Danh sách chưa có đoạn nào cần cắt.');
+  if(total>50000) errs.push(`Có ${fmt(total)} đoạn, vượt giới hạn 50.000 đoạn một lần tính.`);
+  if(errs.length){ result=null; renderErrors(errs); return; }
+  $('#bRun').disabled=true; $('#bRun').textContent='Đang tính…';
+  await new Promise(r=>setTimeout(r,30));
+  const out=[];
+  try{
+    for(const [type,pieces] of groups){
+      const cfg=cfgOf(type);
+      out.push({type, cfg, ...solveGroup(pieces,cfg)});
+      await new Promise(r=>setTimeout(r,0));
+    }
+    result={groups:out, S:{...S}}; dirty=false; renderResult();
+  }catch(err){ renderErrors(['Lỗi khi tính: '+err.message]); }
+  $('#bRun').disabled=false; $('#bRun').textContent='Tính phương án cắt';
+  if(matchMedia('(max-width:979px)').matches) $('#results').scrollIntoView({behavior:'smooth'});
+};
+function renderErrors(errs){
+  $('#results').innerHTML=`<div class="err"><b>Chưa tính được phương án.</b><ul>${errs.slice(0,30).map(e=>`<li>${esc(e)}</li>`).join('')}</ul>${errs.length>30?`<p>…và ${errs.length-30} lỗi khác.</p>`:''}</div>`;
+}
+ 
+function barHTML(p, cfg){
+  const st=p.stock, pct=v=>(v/st*100).toFixed(3)+'%';
+  let h='';
+  if(!p.fromRem && cfg.trim>0) h+=`<div class="tr" style="width:${pct(cfg.trim)}" title="Cắt bỏ đầu ${fmt(cfg.trim)} mm"></div>`;
+  p.cut.forEach(l=>{
+    h+=`<div class="pc" style="width:${pct(l)}" title="${fmt(l)} mm">${l/st>0.075?fmt(l):''}</div>`;
+    if(cfg.kerf>0) h+=`<div class="kf" style="width:${pct(cfg.kerf)}"></div>`;
+  });
+  const cls=p.leftover>=cfg.reuse && p.leftover>0 ? 'k':'w';
+  h+=`<div class="lf ${cls}">${p.leftover/st>0.06?fmt(p.leftover):''}</div>`;
+  return `<div class="bar" role="img" aria-label="${p.cut.map(fmt).join(' + ')} mm, thừa ${fmt(p.leftover)} mm">${h}</div>`;
+}
+function renderResult(){
+  const Gs=result.groups, R=result.S;
+  const bars=Gs.reduce((a,g)=>a+g.nBars,0), nRem=Gs.reduce((a,g)=>a+g.nRem,0);
+  const len=Gs.reduce((a,g)=>a+g.totalLen,0), keep=Gs.reduce((a,g)=>a+g.keep,0), scrap=Gs.reduce((a,g)=>a+g.scrap,0);
+  const kg=Gs.reduce((a,g)=>a+(g.cfg.uw? g.nBars*g.cfg.stock/1000*g.cfg.uw : 0),0);
+  const kgNet=Gs.reduce((a,g)=>a+(g.cfg.uw? g.totalLen/1000*g.cfg.uw : 0),0);
+  const mBuy=Gs.reduce((a,g)=>a+g.nBars*g.cfg.stock,0);
+  let h=`<p class="stale" id="staleNote" ${dirty?'':'hidden'}>Danh sách hoặc thông số đã thay đổi. Bấm "Tính phương án cắt" để cập nhật.</p>
+  <div class="totals">
+    <div class="main"><b>${fmt(bars)}</b><span>cây ống mới cần dùng</span></div>
+    ${nRem?`<div><b>${fmt(nRem)}</b><span>đoạn tồn kho được dùng</span></div>`:''}
+    <div><b>${mBuy?fmt1(len/ (mBuy + Gs.reduce((a,g)=>a+g.patterns.filter(p=>p.fromRem).reduce((s,p)=>s+p.stock,0),0))*100):'–'}%</b><span>hiệu suất sử dụng</span></div>
+    <div><b>${fmt2(len/1000)} m</b><span>tổng chiều dài cắt</span></div>
+    ${kg?`<div><b>${fmt(kg)} kg</b><span>khối lượng cây xuất kho</span></div><div><b>${fmt(kgNet)} kg</b><span>khối lượng các đoạn cắt</span></div>`:''}
+    <div><b>${fmt2(keep/1000)} m</b><span>thừa giữ lại (≥ ${fmt(R.reuse)} mm)</span></div>
+    <div><b>${fmt2(scrap/1000)} m</b><span>phế liệu</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn small" id="bExport" hidden>Tải file Excel kết quả</button>
+    <button class="btn small" id="bCopy">Sao chép bảng để dán vào Excel</button>
+  </div>
+  <div class="legend"><span><i style="background:linear-gradient(180deg,var(--steel-a),var(--steel-c))"></i>Đoạn cắt</span><span><i style="background:var(--accent)"></i>Mạch cưa</span><span><i style="background:color-mix(in srgb,var(--keep) 30%,transparent)"></i>Thừa giữ lại</span><span><i style="background:color-mix(in srgb,var(--waste) 35%,transparent)"></i>Phế liệu</span></div>`;
+  Gs.forEach(g=>{
+    const c=g.cfg;
+    const badge = !g.nBars ? '' : g.nBars===g.LB ? `<span class="badge ok">Đã đạt số cây tối thiểu</span>` : `<span class="badge lb" title="Không phương án nào dùng ít hơn số này. Con số thực tế tối thiểu có thể cao hơn.">Cận dưới lý thuyết: ${g.LB} cây</span>`;
+    h+=`<div class="group"><div class="ghead"><h3>${esc(g.type)}</h3>
+      <div class="gstat"><b>${fmt(g.nBars)} cây ${fmt(c.stock)} mm</b>${g.nRem?` + ${g.nRem} đoạn tồn`:''} cho ${fmt(g.nPieces)} đoạn, hiệu suất <b>${g.nBars?fmt1(g.eff*100)+'%':'–'}</b>${c.uw?`, xuất kho ≈ <b>${fmt(g.nBars*c.stock/1000*c.uw)} kg</b> (đoạn cắt ${fmt(g.totalLen/1000*c.uw)} kg, ${fmt2(c.uw)} kg/m)`:''}${badge}</div></div>`;
+    let mi=0;
+    g.patterns.forEach(p=>{
+      mi++;
+      const cls=p.leftover>=c.reuse && p.leftover>0 ? 'k':'w';
+      const hasCode=p.bars.some(b=>b.some(x=>x.code));
+      h+=`<div class="pat"><div class="times ${p.fromRem?'rem':''}"><b>×${p.times}</b><span>${p.fromRem?'đoạn tồn':'cây'}</span></div><div>
+        ${p.fromRem?`<div class="src">Dùng đoạn tồn kho ${fmt(p.stock)} mm</div>`:''}
+        ${barHTML(p,c)}
+        <div class="pinfo">Mẫu ${mi}: ${p.cut.map(fmt).join(' + ')} = <b>${fmt(p.sumLen)} mm</b>, còn thừa <span class="left ${cls}">${fmt(p.leftover)} mm${cls==='k'?' (giữ lại)':p.leftover>0?' (phế)':''}</span></div>
+        ${hasCode?`<details class="codes"><summary>Mã đoạn trên từng cây</summary><ol>${p.bars.map(b=>`<li>${b.map(x=>esc(x.code||'—')+' ('+fmt(x.len)+')').join(', ')}</li>`).join('')}</ol></details>`:''}
+      </div></div>`;
+    });
+    h+=`</div>`;
+  });
+  $('#results').innerHTML=h;
+  if(downloads && (window.ExcelJS||window.XLSX)){ const b=$('#bExport'); b.hidden=false; b.onclick=exportXlsx; }
+  $('#bCopy').onclick=copyTable;
+}
+ 
+/* ---------- Export ---------- */
+function tables(){
+  const Gs=result.groups, R=result.S;
+  const sum=[['Loại ống','Chiều dài cây (mm)','Lưỡi cưa (mm)','Số đoạn','Tổng dài cắt (m)','Số cây mới','Đoạn tồn đã dùng','Cận dưới lý thuyết','Hiệu suất (%)','kg/m','Khối lượng đoạn cắt (kg)','Khối lượng cây xuất kho (kg)','Thừa giữ lại (m)','Phế liệu (m)']];
+  const pat=[['Loại ống','Mẫu','Nguồn','Chiều dài cây (mm)','Số cây','Các đoạn (mm)','Tổng dùng (mm)','Thừa (mm)','Loại thừa']];
+  const det=[['Loại ống','Cây số','Nguồn','Mẫu','Thứ tự cắt','Chiều dài (mm)','Mã đoạn']];
+  Gs.forEach(g=>{
+    const c=g.cfg;
+    sum.push([g.type,c.stock,c.kerf,g.nPieces,+(g.totalLen/1000).toFixed(3),g.nBars,g.nRem,g.LB,+(g.eff*100).toFixed(1),c.uw||'',c.uw?+(g.totalLen/1000*c.uw).toFixed(1):'',c.uw?+(g.nBars*c.stock/1000*c.uw).toFixed(1):'',+(g.keep/1000).toFixed(3),+(g.scrap/1000).toFixed(3)]);
+    let barNo=0;
+    g.patterns.forEach((p,pi)=>{
+      const kind=p.leftover>=c.reuse && p.leftover>0?'Giữ lại':(p.leftover>0?'Phế':'');
+      const src=p.fromRem?'Tồn kho':'Cây mới';
+      pat.push([g.type,'Mẫu '+(pi+1),src,p.stock,p.times,p.cut.join(' + '),p.sumLen,p.leftover,kind]);
+      p.bars.forEach(b=>{ barNo++; b.forEach((x,k)=>det.push([g.type,barNo,src,'Mẫu '+(pi+1),k+1,x.len,x.code])); });
+    });
+  });
+  return {sum,pat,det};
+}
+async function exportXlsxPlain(){
+  const {sum,pat,det}=tables();
+  const wb=XLSX.utils.book_new();
+  const add=(rows,name,cols)=>{ const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=cols.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,name); };
+  add(sum,'Tong hop',[40,12,10,9,13,10,12,12,11,8,16,16,13,11]);
+  add(pat,'So do cat',[40,9,10,12,8,44,13,10,10]);
+  add(det,'Chi tiet tung cay',[40,8,10,9,10,13,34]);
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  try{ await downloads.save({filename:'phuong-an-cat-ong.xlsx', data:new Blob([buf])}); toast('Đã lưu file Excel'); }
+  catch(e){ if(e && e.code==='declined') return; toast('Không lưu được file ('+(e&&e.code||'lỗi')+'). Hãy dùng nút sao chép.'); }
+}
+/* ---------- Bar diagram (canvas) for Excel export ---------- */
+const IMG_W=360, IMG_H=16, IMG_S=2;
+const BAR_COLORS=[['#4F7CAC','#7E9FC2'],['#E0913A','#EAB176']];   // [fill, highlight] alternating per bar
+function fmtMM(v){ v=Math.round(v*10)/10; return Number.isInteger(v)? nf.format(v) : new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1}).format(v); }
+function barPNG(cut, leftover, reuse, barNo){
+  const S=IMG_S, W=IMG_W, H=IMG_H;
+  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+  const d=cv.getContext('2d');
+  const F1=`bold ${11*S}px Arial, sans-serif`, F2=`bold ${9*S}px Arial, sans-serif`;
+  const segs=cut.map(L=>({t:fmtMM(L), L, k:'piece'}));
+  if(leftover>0) segs.push(leftover>=reuse ? {t:`Thừa ${fmtMM(leftover)}`,L:leftover,k:'keep'} : {t:`Bỏ ${fmtMM(leftover)}`,L:leftover,k:'scrap'});
+  d.font=F1;
+  const total=segs.reduce((a,s)=>a+s.L,0);
+  const raw=segs.map(s=>Math.max(d.measureText(s.t).width/S+8, s.L/total*W));
+  const k=W/raw.reduce((a,b)=>a+b,0);
+  const [fill,hi]=BAR_COLORS[(barNo-1)%2];
+  const top=1*S, bot=(H-1)*S; let x=0;
+  segs.forEach((s,i)=>{
+    const x0=Math.round(x*S); x+=raw[i]*k; const x1=Math.round(x*S); const w=x1-x0;
+    let col;
+    if(s.k==='piece'){
+      d.fillStyle=fill; d.fillRect(x0,top,w,bot-top);
+      d.fillStyle=hi; d.fillRect(x0,top,w,2*S);
+      d.fillStyle='#1F2A36'; d.fillRect(x1-2*S,0,2*S,H*S);   // cut mark
+      col='#fff';
+    } else if(s.k==='keep'){
+      d.fillStyle='#fff'; d.fillRect(x0,top,w,bot-top);
+      d.strokeStyle='#8A99A8'; d.lineWidth=S; d.strokeRect(x0+S/2,top+S/2,w-S,bot-top-S);
+      col='#2F7D4F';
+    } else {
+      d.save(); d.beginPath(); d.rect(x0,top,w,bot-top); d.clip();
+      d.fillStyle='#fff'; d.fillRect(x0,top,w,bot-top);
+      d.strokeStyle='#C8443A'; d.lineWidth=S;
+      for(let hx=x0-(bot-top); hx<x1; hx+=5*S){ d.beginPath(); d.moveTo(hx,bot); d.lineTo(hx+(bot-top),top); d.stroke(); }
+      d.restore();
+      d.strokeStyle='#C8443A'; d.strokeRect(x0+S/2,top+S/2,w-S,bot-top-S);
+      col='#C8443A';
+    }
+    d.font=F1; let tw=d.measureText(s.t).width;
+    if(tw>w-4*S){ d.font=F2; tw=d.measureText(s.t).width; }
+    const tx=x0+(w-tw)/2, ty=(top+bot)/2;
+    if(s.k==='scrap'){ d.fillStyle='#fff'; d.fillRect(tx-2*S,ty-6*S,tw+4*S,12*S); }
+    d.fillStyle=col; d.textBaseline='middle'; d.fillText(s.t,tx,ty);
+  });
+  d.strokeStyle='#1F2A36'; d.lineWidth=S; d.strokeRect(S/2,top+S/2,W*S-S,bot-top-S);
+  return cv;
+}
+/* Picture sized exactly to its (merged) cell, bar centred on a transparent background,
+   so it stretches with the cell and stays centred when rows/columns are resized. */
+function cellPNG(cut, leftover, reuse, barNo, boxW, boxH){
+  const S=IMG_S, bar=barPNG(cut,leftover,reuse,barNo);
+  const cv=document.createElement('canvas'); cv.width=Math.round(boxW*S); cv.height=Math.round(boxH*S);
+  cv.getContext('2d').drawImage(bar, Math.round((cv.width-bar.width)/2), Math.round((cv.height-bar.height)/2));
+  return cv.toDataURL('image/png');
+}
+ 
+/* ---------- Excel export with pictures (ExcelJS) ---------- */
+async function exportXlsx(){
+  if(!window.ExcelJS) return exportXlsxPlain();
+  const btn=$('#bExport'); const label=btn.textContent; btn.disabled=true; btn.textContent='Đang tạo file…';
+  try{
+    await new Promise(r=>setTimeout(r,20));
+    const {sum,pat}=tables(), R=result.S;
+    const wb=new ExcelJS.Workbook();
+    const FONT={name:'Arial',size:10};
+    const head=(ws,cols,widths)=>{
+      const row=ws.addRow(cols); row.height=30;
+      row.eachCell(c=>{ c.font={...FONT,bold:true,color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F2A36'}}; c.alignment={horizontal:'center',vertical:'middle',wrapText:true}; });
+      widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+    };
+    const center=(row,cols)=>cols.forEach(ci=>{ row.getCell(ci).alignment={horizontal:'center',vertical:'middle'}; });
+    const line=c=>{ c.font=c.font&&c.font.bold?c.font:FONT; c.border={bottom:{style:'thin',color:{argb:'FFC9D0D8'}}}; };
+ 
+    // Tong hop
+    const s1=wb.addWorksheet('Tong hop',{views:[{state:'frozen',ySplit:1}]});
+    head(s1,sum[0],[40,12,10,9,13,10,12,12,11,8,16,16,13,11]);
+    sum.slice(1).forEach(r=>{ const row=s1.addRow(r); row.eachCell({includeEmpty:true},line); row.getCell(9).numFmt='0.0'; center(row,[2,3,4,6,7,8,9,10]); });
+    const n1=sum.length;
+    const tot=s1.addRow(['TỔNG CỘNG']);
+    [4,5,6,7,8,11,12,13,14].forEach(c=>{ const L=String.fromCharCode(64+c); tot.getCell(c).value={formula:`SUM(${L}2:${L}${n1})`}; });
+    tot.eachCell({includeEmpty:true},c=>{ c.font={...FONT,bold:true}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2C2'}}; });
+ 
+    // So do cat
+    const s2=wb.addWorksheet('So do cat',{views:[{state:'frozen',ySplit:1}]});
+    head(s2,pat[0],[40,9,10,12,8,44,13,10,10]);
+    pat.slice(1).forEach(r=>{ const row=s2.addRow(r); row.eachCell({includeEmpty:true},line); center(row,[2,3,4,5,9]); });
+    s2.autoFilter={from:'A1',to:{row:pat.length,column:9}};
+ 
+    // Chi tiet tung cay (+ picture per bar)
+    const s3=wb.addWorksheet('Chi tiet tung cay',{views:[{state:'frozen',ySplit:1}]});
+    head(s3,['Loại ống','Cây số','Nguồn','Mẫu','Thứ tự cắt','Chiều dài cắt (mm)','Mã đoạn','Ghi chú','Hình ảnh mô tả'],[40,8,10,9,10,14,34,26,56]);
+    const BOX_W=56*7+5;
+    const ROWPT=15, ROWPX=ROWPT*96/72, cache=new Map();
+    let r=2;
+    for(const g of result.groups){
+      const c=g.cfg; let barNo=0;
+      g.patterns.forEach((p,pi)=>{
+        const src=p.fromRem?'Tồn kho':'Cây mới';
+        p.bars.forEach(b=>{
+          barNo++; const r0=r, zebra=barNo%2===0;
+          b.forEach((x,k)=>{
+            const note = p.fromRem ? `Dùng đoạn tồn ${fmtMM(p.stock)} mm` : (b.length===1 && x.len>=c.stock-c.trim ? 'Dùng cây nguyên, không cắt' : '');
+            const row=s3.addRow([g.type,barNo,src,'Mẫu '+(pi+1),k+1,x.len,x.code,note]); row.height=ROWPT;
+            for(let ci=1; ci<=9; ci++){ const cell=row.getCell(ci); line(cell);
+              cell.alignment=[2,3,4,5,9].includes(ci)?{horizontal:'center',vertical:'middle'}:{vertical:'middle',wrapText:ci===8};
+              if(zebra) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD6DFEA'}};
+              if(k===b.length-1) cell.border={bottom:{style:'medium',color:{argb:'FF5B6B7D'}}}; }
+            row.getCell(6).numFmt='#,##0'; r++;
+          });
+          const n=b.length;
+          if(n>1) s3.mergeCells(r0,9,r0+n-1,9);
+          const key=p.cut.join('+')+'|'+p.leftover+'|'+((barNo-1)%2)+'|'+n;
+          let id=cache.get(key);
+          if(id===undefined){ id=wb.addImage({base64:cellPNG(p.cut,p.leftover,c.reuse,barNo,BOX_W,n*ROWPX),extension:'png'}); cache.set(key,id); }
+          // two-cell anchor covering the whole (merged) cell = "move and size with cells"
+          s3.addImage(id,{tl:{col:8,row:r0-1}, br:{col:9,row:r0-1+n}});
+        });
+      });
+    }
+    s3.autoFilter={from:'A1',to:{row:r-1,column:9}};
+    const buf=await wb.xlsx.writeBuffer();
+    await downloads.save({filename:'phuong-an-cat-ong.xlsx', data:new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})});
+    toast('Đã lưu file Excel kèm hình ảnh');
+  }catch(e){
+    if(!(e && e.code==='declined')) toast('Không tạo được file ('+(e&&(e.code||e.message)||'lỗi')+').');
+  }finally{ btn.disabled=false; btn.textContent=label; }
+}
+ 
+async function copyTable(){
+  const tsv=tables().pat.map(r=>r.join('\t')).join('\n');
+  try{ await navigator.clipboard.writeText(tsv); toast('Đã sao chép. Dán vào Excel bằng Ctrl+V.'); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=tsv; document.body.appendChild(ta); ta.select();
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(_){}
+    ta.remove(); toast(ok?'Đã sao chép. Dán vào Excel bằng Ctrl+V.':'Trình duyệt chặn sao chép. Hãy dùng nút tải file Excel.');
+  }
+}
+ 
+/* ---------- Init ---------- */
+load();
+for(const id in sMap) document.getElementById(id).value=S[sMap[id]];
+if(!rows.length) rows=[{type:'',len:'',qty:'1',code:''}];
+renderRows();
+if(!(window.claude && window.claude.use)){
+  downloads={save:async({filename,data})=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data])); a.download=filename; document.body.appendChild(a); a.click(); a.remove(); return {status:'saved'}; }};
+}
+(async()=>{ try{ if(window.claude && claude.use){ downloads=await claude.use('downloads'); if(result && downloads && (window.ExcelJS||window.XLSX)){ const b=$('#bExport'); if(b){ b.hidden=false; b.onclick=exportXlsx; } } } }catch(e){ downloads=null; } })();
+ 
+</script>
+</body>
+</html>
  
 
