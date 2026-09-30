@@ -1,7 +1,3 @@
-
-
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -645,7 +641,6 @@ function barPNG(cut, leftover, reuse, barNo){
   const raw=segs.map(s=>Math.max(d.measureText(s.t).width/S+8, s.L/total*W));
   const k=W/raw.reduce((a,b)=>a+b,0);
   const [fill,hi]=BAR_COLORS[(barNo-1)%2];
-  d.fillStyle='#fff'; d.fillRect(0,0,W*S,H*S);
   const top=1*S, bot=(H-1)*S; let x=0;
   segs.forEach((s,i)=>{
     const x0=Math.round(x*S); x+=raw[i]*k; const x1=Math.round(x*S); const w=x1-x0;
@@ -675,6 +670,14 @@ function barPNG(cut, leftover, reuse, barNo){
     d.fillStyle=col; d.textBaseline='middle'; d.fillText(s.t,tx,ty);
   });
   d.strokeStyle='#1F2A36'; d.lineWidth=S; d.strokeRect(S/2,top+S/2,W*S-S,bot-top-S);
+  return cv;
+}
+/* Picture sized exactly to its (merged) cell, bar centred on a transparent background,
+   so it stretches with the cell and stays centred when rows/columns are resized. */
+function cellPNG(cut, leftover, reuse, barNo, boxW, boxH){
+  const S=IMG_S, bar=barPNG(cut,leftover,reuse,barNo);
+  const cv=document.createElement('canvas'); cv.width=Math.round(boxW*S); cv.height=Math.round(boxH*S);
+  cv.getContext('2d').drawImage(bar, Math.round((cv.width-bar.width)/2), Math.round((cv.height-bar.height)/2));
   return cv.toDataURL('image/png');
 }
  
@@ -689,15 +692,16 @@ async function exportXlsx(){
     const FONT={name:'Arial',size:10};
     const head=(ws,cols,widths)=>{
       const row=ws.addRow(cols); row.height=30;
-      row.eachCell(c=>{ c.font={...FONT,bold:true,color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F2A36'}}; c.alignment={vertical:'middle',wrapText:true}; });
+      row.eachCell(c=>{ c.font={...FONT,bold:true,color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F2A36'}}; c.alignment={horizontal:'center',vertical:'middle',wrapText:true}; });
       widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
     };
+    const center=(row,cols)=>cols.forEach(ci=>{ row.getCell(ci).alignment={horizontal:'center',vertical:'middle'}; });
     const line=c=>{ c.font=c.font&&c.font.bold?c.font:FONT; c.border={bottom:{style:'thin',color:{argb:'FFC9D0D8'}}}; };
  
     // Tong hop
     const s1=wb.addWorksheet('Tong hop',{views:[{state:'frozen',ySplit:1}]});
     head(s1,sum[0],[40,12,10,9,13,10,12,12,11,8,16,13,11]);
-    sum.slice(1).forEach(r=>{ const row=s1.addRow(r); row.eachCell({includeEmpty:true},line); row.getCell(9).numFmt='0.0'; });
+    sum.slice(1).forEach(r=>{ const row=s1.addRow(r); row.eachCell({includeEmpty:true},line); row.getCell(9).numFmt='0.0'; center(row,[2,3,4,6,7,8,9,10]); });
     const n1=sum.length;
     const tot=s1.addRow(['TỔNG CỘNG']);
     [4,5,6,7,8,11,12,13].forEach(c=>{ const L=String.fromCharCode(64+c); tot.getCell(c).value={formula:`SUM(${L}2:${L}${n1})`}; });
@@ -706,12 +710,13 @@ async function exportXlsx(){
     // So do cat
     const s2=wb.addWorksheet('So do cat',{views:[{state:'frozen',ySplit:1}]});
     head(s2,pat[0],[40,9,10,12,8,44,13,10,10]);
-    pat.slice(1).forEach(r=>s2.addRow(r).eachCell({includeEmpty:true},line));
+    pat.slice(1).forEach(r=>{ const row=s2.addRow(r); row.eachCell({includeEmpty:true},line); center(row,[2,3,4,5,9]); });
     s2.autoFilter={from:'A1',to:{row:pat.length,column:9}};
  
     // Chi tiet tung cay (+ picture per bar)
     const s3=wb.addWorksheet('Chi tiet tung cay',{views:[{state:'frozen',ySplit:1}]});
-    head(s3,['Loại ống','Cây số','Nguồn','Mẫu','Thứ tự cắt','Chiều dài cắt (mm)','Mã đoạn','Ghi chú','Hình ảnh mô tả'],[40,8,10,9,10,14,34,24,53]);
+    head(s3,['Loại ống','Cây số','Nguồn','Mẫu','Thứ tự cắt','Chiều dài cắt (mm)','Mã đoạn','Ghi chú','Hình ảnh mô tả'],[40,8,10,9,10,14,34,26,56]);
+    const BOX_W=56*7+5;
     const ROWPT=15, ROWPX=ROWPT*96/72, cache=new Map();
     let r=2;
     for(const g of result.groups){
@@ -723,18 +728,19 @@ async function exportXlsx(){
           b.forEach((x,k)=>{
             const note = p.fromRem ? `Dùng đoạn tồn ${fmtMM(p.stock)} mm` : (b.length===1 && x.len>=c.stock-c.trim ? 'Dùng cây nguyên, không cắt' : '');
             const row=s3.addRow([g.type,barNo,src,'Mẫu '+(pi+1),k+1,x.len,x.code,note]); row.height=ROWPT;
-            for(let ci=1; ci<=9; ci++){ const cell=row.getCell(ci); line(cell); cell.alignment={vertical:'middle',wrapText:ci===8};
-              if(zebra) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEEF1F4'}}; }
+            for(let ci=1; ci<=9; ci++){ const cell=row.getCell(ci); line(cell);
+              cell.alignment=[2,3,4,5,9].includes(ci)?{horizontal:'center',vertical:'middle'}:{vertical:'middle',wrapText:ci===8};
+              if(zebra) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD6DFEA'}};
+              if(k===b.length-1) cell.border={bottom:{style:'medium',color:{argb:'FF5B6B7D'}}}; }
             row.getCell(6).numFmt='#,##0'; r++;
           });
           const n=b.length;
           if(n>1) s3.mergeCells(r0,9,r0+n-1,9);
-          const key=p.cut.join('+')+'|'+p.leftover+'|'+((barNo-1)%2);
+          const key=p.cut.join('+')+'|'+p.leftover+'|'+((barNo-1)%2)+'|'+n;
           let id=cache.get(key);
-          if(id===undefined){ id=wb.addImage({base64:barPNG(p.cut,p.leftover,c.reuse,barNo),extension:'png'}); cache.set(key,id); }
-          const off=Math.max(0,(n*ROWPX-IMG_H)/2), dr=Math.floor(off/ROWPX);
-          s3.addImage(id,{tl:{nativeCol:8,nativeColOff:4*9525,nativeRow:r0-1+dr,nativeRowOff:Math.round((off-dr*ROWPX)*9525)},
-                          ext:{width:IMG_W,height:IMG_H},editAs:'oneCell'});
+          if(id===undefined){ id=wb.addImage({base64:cellPNG(p.cut,p.leftover,c.reuse,barNo,BOX_W,n*ROWPX),extension:'png'}); cache.set(key,id); }
+          // two-cell anchor covering the whole (merged) cell = "move and size with cells"
+          s3.addImage(id,{tl:{col:8,row:r0-1}, br:{col:9,row:r0-1+n}});
         });
       });
     }
@@ -770,5 +776,6 @@ if(!(window.claude && window.claude.use)){
 </script>
 </body>
 </html>
+ 
  
 
