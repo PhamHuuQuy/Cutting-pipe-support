@@ -1,3 +1,7 @@
+
+
+
+Index · HTML
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -55,7 +59,7 @@ table.list th{position:sticky;top:0;background:var(--panel);font-size:12px;font-
 table.list td{padding:3px 4px;border-bottom:1px solid var(--line)}
 table.list td input{padding:5px 6px;border-color:transparent;background:transparent}
 table.list td input:hover{border-color:var(--line)}
-table.list .n{width:74px}.list .q{width:56px}.list .x{width:30px}
+table.list .n{width:74px}.list .q{width:66px}.list .x{width:30px}
 table.list td.idx{color:var(--muted);font-size:12px;width:28px;text-align:right;padding-right:6px}
 .btn{font:inherit;font-weight:600;cursor:pointer;border-radius:6px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
 .btn:hover{border-color:var(--steel-b)}
@@ -142,7 +146,7 @@ h2.sec{margin-top:18px}
     </div>
     <div class="stockbar" aria-hidden="true"></div>
   </header>
-
+ 
   <div class="grid">
     <section class="panel inputs">
       <h2>Thông số mặc định</h2>
@@ -152,7 +156,7 @@ h2.sec{margin-top:18px}
         <label class="f">Cắt bỏ đầu cây (mm)<input id="sTrim" type="number" min="0" step="1"></label>
         <label class="f">Đoạn thừa ≥ (mm) giữ lại tồn kho<input id="sReuse" type="number" min="0" step="10"></label>
       </div>
-
+ 
       <h2>Danh sách đoạn cần cắt</h2>
       <div class="row">
         <button class="btn small" id="bImport">Nhập file Excel / BOM</button>
@@ -162,7 +166,7 @@ h2.sec{margin-top:18px}
         <button class="btn small" id="bClear">Xoá hết</button>
         <input type="file" id="fileIn" accept=".xlsx,.xlsm,.xls,.csv" hidden>
       </div>
-      <p class="hint">File BOM có cột <b>Length</b>, <b>PT No</b> (số lượng), <b>Description</b> (quy cách), <b>Drawing No.</b>, <b>Spool No.</b>, <b>Ghi chú</b> được nhận tự động. Dòng có ghi chú "Xong" được đánh dấu bỏ qua.</p>
+      <p class="hint">File BOM có cột <b>Length</b>, <b>Description</b> (quy cách), <b>Drawing No.</b>, <b>Spool No.</b>, <b>Ghi chú</b> được nhận tự động. Mỗi dòng mặc định cắt <b>1 đoạn</b>; sửa ở cột <b>Số lượng</b> nếu cần. Ghi chú chỉ để tham khảo (rê chuột lên dòng để xem). Muốn loại dòng nào thì tích cột <b>Bỏ</b>.</p>
       <div class="paste" id="pasteBox">
         <p class="hint">Dán cả bảng có dòng tiêu đề, hoặc chỉ các cột theo thứ tự: <b>Loại ống</b>, <b>Chiều dài (mm)</b>, <b>Số lượng</b>, <b>Mã đoạn</b>.</p>
         <textarea id="pasteTxt" placeholder="Ø60x3	2450	4	TR-01&#10;Ø60x3	1320	6	TR-02"></textarea>
@@ -171,24 +175,24 @@ h2.sec{margin-top:18px}
       <p class="meta" id="rowMeta"></p>
       <div class="tablewrap">
         <table class="list">
-          <thead><tr><th></th><th>Loại ống</th><th class="n">Dài (mm)</th><th class="q">SL</th><th>Mã đoạn</th><th class="sk" title="Bỏ qua dòng này khi tính">Bỏ</th><th class="x"></th></tr></thead>
+          <thead><tr><th></th><th>Loại ống</th><th class="n">Dài (mm)</th><th class="q" title="Số lượng đoạn cần cắt, mặc định 1">Số lượng</th><th>Mã đoạn</th><th class="sk" title="Bỏ qua dòng này khi tính">Bỏ</th><th class="x"></th></tr></thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
-
+ 
       <h2 class="sec">Cấu hình theo từng loại ống</h2>
       <p class="hint">Để trống thì dùng thông số mặc định. Đoạn tồn kho nhập dạng <b>2500x2, 1800</b> (2 đoạn 2500 mm và 1 đoạn 1800 mm), được dùng trước cây mới.</p>
       <div id="cfg"></div>
       <button class="btn primary" id="bRun">Tính phương án cắt</button>
     </section>
-
+ 
     <section class="panel" id="results">
       <div class="empty"><strong>Chưa có phương án cắt</strong>Nhập danh sách hoặc file BOM bên trái rồi bấm "Tính phương án cắt". Chưa có dữ liệu? Bấm "Dữ liệu mẫu" để thử.</div>
     </section>
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
-
+ 
 <script>
 /* ---------- Solver (1D cutting stock) ----------
    Units: tenths of a mm. Each piece consumes (length + kerf); a bar's capacity is (usable + kerf). */
@@ -292,20 +296,20 @@ function solveGroup(pieces, cfg){
   patterns.forEach(p=>{ if(p.leftover>=cfg.reuse && p.leftover>0) keep+=p.leftover*p.times; else scrap+=p.leftover*p.times; });
   return {patterns, nBars, nRem, LB, totalLen, nPieces:pieces.length, keep, scrap, eff: nBars? lenNew/(nBars*cfg.stock) : 0};
 }
-
+ 
 const $ = s => document.querySelector(s);
 const nf = new Intl.NumberFormat('vi-VN');
 const fmt = n => nf.format(Math.round(n*10)/10);
 const fmt1 = n => new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1,minimumFractionDigits:1}).format(n);
 const fmt2 = n => new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2,minimumFractionDigits:2}).format(n);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
+ 
 let S = {stock:6000, kerf:3, trim:0, reuse:500};
 let rows = [];      // {type,len,qty,code,note,skip}
 let G = {};         // per-type config {stock,kerf,rem,uw} as strings; blank = default
 let result = null, dirty = false, downloads = null, cfgTypes = [];
 const KEY='cat-ong-v2';
-
+ 
 function load(){
   try{
     let d = JSON.parse(localStorage.getItem(KEY)||'null');
@@ -315,7 +319,7 @@ function load(){
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify({S, rows, G})); }catch(e){} }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2600); }
-
+ 
 function parseNum(v){
   if (typeof v === 'number') return v;
   let s = String(v ?? '').replace(/\s|mm/gi,'');
@@ -349,7 +353,7 @@ function specLabel(desc){
   if(!od) return d;
   return [grade, sch, end].filter(Boolean).join(' ') + ' · OD' + od[1] + 'x' + od[2];
 }
-
+ 
 /* ---------- Input table ---------- */
 function activeTypes(){
   const set=new Map();
@@ -383,7 +387,7 @@ function renderCfg(){
   }</tbody></table></div>`;
 }
 function markDirty(){ dirty = true; const s=$('#staleNote'); if(s) s.hidden=false; }
-
+ 
 $('#tbody').addEventListener('input', e=>{
   const el=e.target; if(!el.dataset.k) return; const i=+el.dataset.i;
   if(el.type==='checkbox'){ rows[i].skip=el.checked; el.closest('tr').classList.toggle('skipped',el.checked); renderCfg(); }
@@ -416,7 +420,7 @@ $('#bSample').onclick = ()=>{
   ];
   save(); renderRows(); markDirty(); toast('Đã nạp dữ liệu mẫu');
 };
-
+ 
 /* ---------- Paste / import ---------- */
 function rowsFromCells(table){
   const out=[];
@@ -439,7 +443,7 @@ function parseTable(aoa){
     const find=(re,skip=[])=>hdr.findIndex((c,i)=>c && re.test(c) && !skip.includes(i));
     const iLen=find(/length|chiều dài|^dài/);
     if(iLen<0) continue;
-    const iQty=find(/^pt ?no|số lượng|^sl$|^qty|quantity/,[iLen]);
+    const iQty=find(/số lượng|^sl$|^qty|^quantity$/,[iLen]);   // PT No is a part number, not a quantity
     const iDesc=find(/description|quy cách|loại ống|^spec/,[iLen]);
     if(iQty<0 && iDesc<0) continue;
     const iDwg=find(/drawing|bản vẽ/), iSpool=find(/spool/), iCode=find(/mã đoạn|^code|^tag/),
@@ -453,7 +457,7 @@ function parseTable(aoa){
       const type=specLabel(desc)||'Ống (chưa đặt tên)';
       const code=[iDwg>=0?row[iDwg]:'', iSpool>=0?row[iSpool]:'', iCode>=0?row[iCode]:''].map(x=>String(x??'').trim()).filter(Boolean).join(' / ');
       const note=iNote>=0?String(row[iNote]??'').replace(/\s+/g,' ').trim():'';
-      out.push({type, len:String(len), qty:String(q>0?q:1), code, note, skip:/\bxong\b/i.test(note)});
+      out.push({type, len:String(len), qty:String(q>0?q:1), code, note, skip:false});   // notes are informational only
       const u=iUW>=0?parseNum(row[iUW]):NaN; if(u>0 && !uw[type]) uw[type]=u;
     }
     return {rows:out, bom:true, uw};
@@ -468,8 +472,7 @@ function addRows(res, source){
   rows=(replace?[]:real).concat(res.rows);
   if(res.uw) for(const t in res.uw){ G[t]=G[t]||{}; if(!G[t].uw) G[t].uw=String(res.uw[t]); }
   save(); renderRows(); markDirty();
-  const sk=res.rows.filter(r=>r.skip).length;
-  toast(`Đã nhập ${res.rows.length} dòng${source?` từ ${source}`:''}${sk?`, ${sk} dòng "Xong" được bỏ qua`:''}`);
+  toast(`Đã nhập ${res.rows.length} dòng${source?` từ ${source}`:''}`);
   return true;
 }
 $('#bPaste').onclick = ()=>{ $('#pasteBox').classList.toggle('open'); $('#pasteTxt').focus(); };
@@ -493,7 +496,7 @@ $('#fileIn').onchange = async e=>{
   }catch(err){ toast('Không đọc được file: '+err.message); }
   e.target.value='';
 };
-
+ 
 /* ---------- Settings ---------- */
 const sMap = {sStock:'stock', sKerf:'kerf', sTrim:'trim', sReuse:'reuse'};
 for(const id in sMap){
@@ -501,7 +504,7 @@ for(const id in sMap){
   el.addEventListener('input', ()=>{ const v=parseNum(el.value); if(v>=0){ S[sMap[id]]=v; save(); markDirty(); } });
   el.addEventListener('change', renderCfg);
 }
-
+ 
 /* ---------- Run ---------- */
 $('#bRun').onclick = async ()=>{
   const errs=[], groups=new Map();
@@ -538,7 +541,7 @@ $('#bRun').onclick = async ()=>{
 function renderErrors(errs){
   $('#results').innerHTML=`<div class="err"><b>Chưa tính được phương án.</b><ul>${errs.slice(0,30).map(e=>`<li>${esc(e)}</li>`).join('')}</ul>${errs.length>30?`<p>…và ${errs.length-30} lỗi khác.</p>`:''}</div>`;
 }
-
+ 
 function barHTML(p, cfg){
   const st=p.stock, pct=v=>(v/st*100).toFixed(3)+'%';
   let h='';
@@ -595,7 +598,7 @@ function renderResult(){
   if(downloads && (window.ExcelJS||window.XLSX)){ const b=$('#bExport'); b.hidden=false; b.onclick=exportXlsx; }
   $('#bCopy').onclick=copyTable;
 }
-
+ 
 /* ---------- Export ---------- */
 function tables(){
   const Gs=result.groups, R=result.S;
@@ -674,7 +677,7 @@ function barPNG(cut, leftover, reuse, barNo){
   d.strokeStyle='#1F2A36'; d.lineWidth=S; d.strokeRect(S/2,top+S/2,W*S-S,bot-top-S);
   return cv.toDataURL('image/png');
 }
-
+ 
 /* ---------- Excel export with pictures (ExcelJS) ---------- */
 async function exportXlsx(){
   if(!window.ExcelJS) return exportXlsxPlain();
@@ -690,7 +693,7 @@ async function exportXlsx(){
       widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
     };
     const line=c=>{ c.font=c.font&&c.font.bold?c.font:FONT; c.border={bottom:{style:'thin',color:{argb:'FFC9D0D8'}}}; };
-
+ 
     // Tong hop
     const s1=wb.addWorksheet('Tong hop',{views:[{state:'frozen',ySplit:1}]});
     head(s1,sum[0],[40,12,10,9,13,10,12,12,11,8,16,13,11]);
@@ -699,13 +702,13 @@ async function exportXlsx(){
     const tot=s1.addRow(['TỔNG CỘNG']);
     [4,5,6,7,8,11,12,13].forEach(c=>{ const L=String.fromCharCode(64+c); tot.getCell(c).value={formula:`SUM(${L}2:${L}${n1})`}; });
     tot.eachCell({includeEmpty:true},c=>{ c.font={...FONT,bold:true}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2C2'}}; });
-
+ 
     // So do cat
     const s2=wb.addWorksheet('So do cat',{views:[{state:'frozen',ySplit:1}]});
     head(s2,pat[0],[40,9,10,12,8,44,13,10,10]);
     pat.slice(1).forEach(r=>s2.addRow(r).eachCell({includeEmpty:true},line));
     s2.autoFilter={from:'A1',to:{row:pat.length,column:9}};
-
+ 
     // Chi tiet tung cay (+ picture per bar)
     const s3=wb.addWorksheet('Chi tiet tung cay',{views:[{state:'frozen',ySplit:1}]});
     head(s3,['Loại ống','Cây số','Nguồn','Mẫu','Thứ tự cắt','Chiều dài cắt (mm)','Mã đoạn','Ghi chú','Hình ảnh mô tả'],[40,8,10,9,10,14,34,24,53]);
@@ -743,7 +746,7 @@ async function exportXlsx(){
     if(!(e && e.code==='declined')) toast('Không tạo được file ('+(e&&(e.code||e.message)||'lỗi')+').');
   }finally{ btn.disabled=false; btn.textContent=label; }
 }
-
+ 
 async function copyTable(){
   const tsv=tables().pat.map(r=>r.join('\t')).join('\n');
   try{ await navigator.clipboard.writeText(tsv); toast('Đã sao chép. Dán vào Excel bằng Ctrl+V.'); }
@@ -753,7 +756,7 @@ async function copyTable(){
     ta.remove(); toast(ok?'Đã sao chép. Dán vào Excel bằng Ctrl+V.':'Trình duyệt chặn sao chép. Hãy dùng nút tải file Excel.');
   }
 }
-
+ 
 /* ---------- Init ---------- */
 load();
 for(const id in sMap) document.getElementById(id).value=S[sMap[id]];
@@ -763,7 +766,9 @@ if(!(window.claude && window.claude.use)){
   downloads={save:async({filename,data})=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data])); a.download=filename; document.body.appendChild(a); a.click(); a.remove(); return {status:'saved'}; }};
 }
 (async()=>{ try{ if(window.claude && claude.use){ downloads=await claude.use('downloads'); if(result && downloads && (window.ExcelJS||window.XLSX)){ const b=$('#bExport'); if(b){ b.hidden=false; b.onclick=exportXlsx; } } } }catch(e){ downloads=null; } })();
-
+ 
 </script>
 </body>
 </html>
+ 
+
