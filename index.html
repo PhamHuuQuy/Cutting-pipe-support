@@ -325,6 +325,12 @@ function parseNum(v){
   else s = s.replace(',', '.');
   return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
 }
+/* Decimal values such as kg/m: "3.929", "3,929" and 3.929 all mean 3.929 (never thousands). */
+function parseDec(v){
+  if (typeof v === 'number') return v;
+  const s=String(v??'').replace(/\s/g,'').replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+}
 function normType(t){ return String(t||'').trim().replace(/\s+/g,' ') || 'Ống (chưa đặt tên)'; }
 function parseRem(s){
   const out=[];
@@ -336,7 +342,7 @@ function parseRem(s){
   return out;
 }
 function cfgOf(t){
-  const g=G[t]||{}, st=parseNum(g.stock), kf=parseNum(g.kerf), u=parseNum(g.uw), uf=parseNum(g.uwFile), us=stdKgm(t);
+  const g=G[t]||{}, st=parseNum(g.stock), kf=parseNum(g.kerf), u=parseDec(g.uw), uf=parseDec(g.uwFile), us=stdKgm(t);
   const uw = u>0 ? u : uf>0 ? uf : us;
   return {stock: st>0?st:S.stock, kerf: kf>=0?kf:S.kerf, trim:S.trim, reuse:S.reuse, rem:parseRem(g.rem), uw,
           uwSrc: u>0?'nhập tay':uf>0?'file BOM':us?'công thức ASME':''};
@@ -388,7 +394,7 @@ function renderCfg(){
       return `<tr><td class="tn">${esc(t)}<small>${fmt(types.get(t))} đoạn${c.uw?`, ${fmt2(c.uw)} kg/m (${c.uwSrc})`:''}</small>${dev>0.02?`<small class="warn">⚠ Khác tiêu chuẩn ${fmt2(us)} kg/m (${fmt1(dev*100)}%)</small>`:''}</td>
       <td><input data-t="${i}" data-f="stock" value="${esc(g.stock||'')}" placeholder="${esc(S.stock)}" inputmode="decimal"></td>
       <td><input data-t="${i}" data-f="kerf" value="${esc(g.kerf??'')}" placeholder="${esc(S.kerf)}" inputmode="decimal"></td>
-      <td class="k"><input data-t="${i}" data-f="uw" value="${esc(g.uw||'')}" placeholder="${c.uw?esc(fmt2(parseNum(g.uwFile)>0?parseNum(g.uwFile):us)):''}" inputmode="decimal"></td>
+      <td class="k"><input data-t="${i}" data-f="uw" value="${esc(g.uw||'')}" placeholder="${c.uw?esc(fmt2(parseDec(g.uwFile)>0?parseDec(g.uwFile):us)):''}" inputmode="decimal"></td>
       <td><input data-t="${i}" data-f="rem" value="${esc(g.rem||'')}" placeholder="VD: 2500x2, 1800"></td></tr>`; }).join('')
   }</tbody></table></div>`;
 }
@@ -477,7 +483,7 @@ function addRows(res, source){
   let replace=false;
   if(real.length) replace=confirm(`Đang có ${real.length} dòng. Bấm OK để THAY THẾ bằng ${res.rows.length} dòng mới, Cancel để THÊM vào cuối danh sách.`);
   rows=(replace?[]:real).concat(res.rows);
-  if(res.uw) for(const t in res.uw){ G[t]=G[t]||{}; G[t].uwFile=String(res.uw[t]); if(G[t].uw===String(res.uw[t])) G[t].uw=''; }
+  if(res.uw) for(const t in res.uw){ G[t]=G[t]||{}; G[t].uwFile=res.uw[t]; if(parseDec(G[t].uw)===res.uw[t]) G[t].uw=''; }
   save(); renderRows(); markDirty();
   toast(`Đã nhập ${res.rows.length} dòng${source?` từ ${source}`:''}`);
   return true;
@@ -788,6 +794,5 @@ if(!(window.claude && window.claude.use)){
 </script>
 </body>
 </html>
- 
  
 
