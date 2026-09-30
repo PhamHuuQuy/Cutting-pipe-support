@@ -118,7 +118,8 @@ details.codes ol{margin:4px 0 0;padding-left:22px}
 .list .sk input{width:auto;accent-color:var(--accent)}
 tr.skipped td input:not([type=checkbox]){text-decoration:line-through;color:var(--muted)}
 .cfgwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
-table.cfg{border-collapse:collapse;width:100%;min-width:380px;font-size:13px}
+table.cfg{border-collapse:collapse;width:100%;min-width:440px;font-size:13px}
+table.cfg small.warn{color:var(--waste);font-weight:600}
 table.cfg th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:6px;border-bottom:1px solid var(--line)}
 table.cfg td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
 table.cfg td.tn{font-weight:600;line-height:1.3;max-width:170px;word-break:break-word}
@@ -335,8 +336,15 @@ function parseRem(s){
   return out;
 }
 function cfgOf(t){
-  const g=G[t]||{}, st=parseNum(g.stock), kf=parseNum(g.kerf), uw=parseNum(g.uw);
-  return {stock: st>0?st:S.stock, kerf: kf>=0?kf:S.kerf, trim:S.trim, reuse:S.reuse, rem:parseRem(g.rem), uw: uw>0?uw:0};
+  const g=G[t]||{}, st=parseNum(g.stock), kf=parseNum(g.kerf), u=parseNum(g.uw), uf=parseNum(g.uwFile), us=stdKgm(t);
+  const uw = u>0 ? u : uf>0 ? uf : us;
+  return {stock: st>0?st:S.stock, kerf: kf>=0?kf:S.kerf, trim:S.trim, reuse:S.reuse, rem:parseRem(g.rem), uw,
+          uwSrc: u>0?'nhập tay':uf>0?'file BOM':us?'công thức ASME':''};
+}
+/* Standard mass per metre from OD x wall in the type label: (OD - t) x t x 0.02466 kg/m (ASME B36.10/B36.19 basis) */
+function stdKgm(t){
+  const m=String(t).match(/OD\s*([\d.]+)\s*[x×]\s*([\d.]+)/i); if(!m) return 0;
+  const D=parseFloat(m[1]), w=parseFloat(m[2]); return D>w&&w>0 ? Math.round((D-w)*w*0.02466*100)/100 : 0;
 }
 /* Short label from a BOM description, e.g. "A312-TP316/316L S10S BE · OD273.1x4.19" */
 function specLabel(desc){
@@ -375,10 +383,12 @@ function updateMeta(){
 function renderCfg(){
   const types=activeTypes(); cfgTypes=[...types.keys()];
   if(!cfgTypes.length){ $('#cfg').innerHTML='<p class="hint">Chưa có loại ống nào.</p>'; return; }
-  $('#cfg').innerHTML = `<div class="cfgwrap"><table class="cfg"><thead><tr><th>Loại ống</th><th class="n">Cây dài (mm)</th><th class="k">Lưỡi cưa</th><th>Đoạn tồn kho (mm)</th></tr></thead><tbody>${
-    cfgTypes.map((t,i)=>{ const g=G[t]||{}; return `<tr><td class="tn">${esc(t)}<small>${fmt(types.get(t))} đoạn${parseNum(g.uw)>0?`, ${fmt2(parseNum(g.uw))} kg/m`:''}</small></td>
+  $('#cfg').innerHTML = `<div class="cfgwrap"><table class="cfg"><thead><tr><th>Loại ống</th><th class="n">Cây dài (mm)</th><th class="k">Lưỡi cưa</th><th class="k">kg/m</th><th>Đoạn tồn kho (mm)</th></tr></thead><tbody>${
+    cfgTypes.map((t,i)=>{ const g=G[t]||{}, c=cfgOf(t), us=stdKgm(t), dev=us&&c.uw?Math.abs(c.uw-us)/us:0;
+      return `<tr><td class="tn">${esc(t)}<small>${fmt(types.get(t))} đoạn${c.uw?`, ${fmt2(c.uw)} kg/m (${c.uwSrc})`:''}</small>${dev>0.02?`<small class="warn">⚠ Khác tiêu chuẩn ${fmt2(us)} kg/m (${fmt1(dev*100)}%)</small>`:''}</td>
       <td><input data-t="${i}" data-f="stock" value="${esc(g.stock||'')}" placeholder="${esc(S.stock)}" inputmode="decimal"></td>
       <td><input data-t="${i}" data-f="kerf" value="${esc(g.kerf??'')}" placeholder="${esc(S.kerf)}" inputmode="decimal"></td>
+      <td class="k"><input data-t="${i}" data-f="uw" value="${esc(g.uw||'')}" placeholder="${c.uw?esc(fmt2(parseNum(g.uwFile)>0?parseNum(g.uwFile):us)):''}" inputmode="decimal"></td>
       <td><input data-t="${i}" data-f="rem" value="${esc(g.rem||'')}" placeholder="VD: 2500x2, 1800"></td></tr>`; }).join('')
   }</tbody></table></div>`;
 }
@@ -395,6 +405,7 @@ $('#tbody').addEventListener('click', e=>{
   const b=e.target.closest('[data-del]'); if(!b) return;
   rows.splice(+b.dataset.del,1); save(); renderRows(); markDirty();
 });
+$('#cfg').addEventListener('change', e=>{ if(e.target.dataset.f==='uw') renderCfg(); });
 $('#cfg').addEventListener('input', e=>{
   const el=e.target; if(!el.dataset.f) return; const t=cfgTypes[+el.dataset.t];
   G[t]=G[t]||{}; G[t][el.dataset.f]=el.value; save(); markDirty();
@@ -466,7 +477,7 @@ function addRows(res, source){
   let replace=false;
   if(real.length) replace=confirm(`Đang có ${real.length} dòng. Bấm OK để THAY THẾ bằng ${res.rows.length} dòng mới, Cancel để THÊM vào cuối danh sách.`);
   rows=(replace?[]:real).concat(res.rows);
-  if(res.uw) for(const t in res.uw){ G[t]=G[t]||{}; if(!G[t].uw) G[t].uw=String(res.uw[t]); }
+  if(res.uw) for(const t in res.uw){ G[t]=G[t]||{}; G[t].uwFile=String(res.uw[t]); if(G[t].uw===String(res.uw[t])) G[t].uw=''; }
   save(); renderRows(); markDirty();
   toast(`Đã nhập ${res.rows.length} dòng${source?` từ ${source}`:''}`);
   return true;
@@ -555,6 +566,7 @@ function renderResult(){
   const bars=Gs.reduce((a,g)=>a+g.nBars,0), nRem=Gs.reduce((a,g)=>a+g.nRem,0);
   const len=Gs.reduce((a,g)=>a+g.totalLen,0), keep=Gs.reduce((a,g)=>a+g.keep,0), scrap=Gs.reduce((a,g)=>a+g.scrap,0);
   const kg=Gs.reduce((a,g)=>a+(g.cfg.uw? g.nBars*g.cfg.stock/1000*g.cfg.uw : 0),0);
+  const kgNet=Gs.reduce((a,g)=>a+(g.cfg.uw? g.totalLen/1000*g.cfg.uw : 0),0);
   const mBuy=Gs.reduce((a,g)=>a+g.nBars*g.cfg.stock,0);
   let h=`<p class="stale" id="staleNote" ${dirty?'':'hidden'}>Danh sách hoặc thông số đã thay đổi. Bấm "Tính phương án cắt" để cập nhật.</p>
   <div class="totals">
@@ -562,7 +574,7 @@ function renderResult(){
     ${nRem?`<div><b>${fmt(nRem)}</b><span>đoạn tồn kho được dùng</span></div>`:''}
     <div><b>${mBuy?fmt1(len/ (mBuy + Gs.reduce((a,g)=>a+g.patterns.filter(p=>p.fromRem).reduce((s,p)=>s+p.stock,0),0))*100):'–'}%</b><span>hiệu suất sử dụng</span></div>
     <div><b>${fmt2(len/1000)} m</b><span>tổng chiều dài cắt</span></div>
-    ${kg?`<div><b>${fmt(kg)} kg</b><span>khối lượng ống cần xuất</span></div>`:''}
+    ${kg?`<div><b>${fmt(kg)} kg</b><span>khối lượng cây xuất kho</span></div><div><b>${fmt(kgNet)} kg</b><span>khối lượng các đoạn cắt</span></div>`:''}
     <div><b>${fmt2(keep/1000)} m</b><span>thừa giữ lại (≥ ${fmt(R.reuse)} mm)</span></div>
     <div><b>${fmt2(scrap/1000)} m</b><span>phế liệu</span></div>
   </div>
@@ -575,7 +587,7 @@ function renderResult(){
     const c=g.cfg;
     const badge = !g.nBars ? '' : g.nBars===g.LB ? `<span class="badge ok">Đã đạt số cây tối thiểu</span>` : `<span class="badge lb" title="Không phương án nào dùng ít hơn số này. Con số thực tế tối thiểu có thể cao hơn.">Cận dưới lý thuyết: ${g.LB} cây</span>`;
     h+=`<div class="group"><div class="ghead"><h3>${esc(g.type)}</h3>
-      <div class="gstat"><b>${fmt(g.nBars)} cây ${fmt(c.stock)} mm</b>${g.nRem?` + ${g.nRem} đoạn tồn`:''} cho ${fmt(g.nPieces)} đoạn, hiệu suất <b>${g.nBars?fmt1(g.eff*100)+'%':'–'}</b>${c.uw?`, ≈ <b>${fmt(g.nBars*c.stock/1000*c.uw)} kg</b>`:''}${badge}</div></div>`;
+      <div class="gstat"><b>${fmt(g.nBars)} cây ${fmt(c.stock)} mm</b>${g.nRem?` + ${g.nRem} đoạn tồn`:''} cho ${fmt(g.nPieces)} đoạn, hiệu suất <b>${g.nBars?fmt1(g.eff*100)+'%':'–'}</b>${c.uw?`, xuất kho ≈ <b>${fmt(g.nBars*c.stock/1000*c.uw)} kg</b> (đoạn cắt ${fmt(g.totalLen/1000*c.uw)} kg, ${fmt2(c.uw)} kg/m)`:''}${badge}</div></div>`;
     let mi=0;
     g.patterns.forEach(p=>{
       mi++;
@@ -598,12 +610,12 @@ function renderResult(){
 /* ---------- Export ---------- */
 function tables(){
   const Gs=result.groups, R=result.S;
-  const sum=[['Loại ống','Chiều dài cây (mm)','Lưỡi cưa (mm)','Số đoạn','Tổng dài cắt (m)','Số cây mới','Đoạn tồn đã dùng','Cận dưới lý thuyết','Hiệu suất (%)','kg/m','Khối lượng cây mới (kg)','Thừa giữ lại (m)','Phế liệu (m)']];
+  const sum=[['Loại ống','Chiều dài cây (mm)','Lưỡi cưa (mm)','Số đoạn','Tổng dài cắt (m)','Số cây mới','Đoạn tồn đã dùng','Cận dưới lý thuyết','Hiệu suất (%)','kg/m','Khối lượng đoạn cắt (kg)','Khối lượng cây xuất kho (kg)','Thừa giữ lại (m)','Phế liệu (m)']];
   const pat=[['Loại ống','Mẫu','Nguồn','Chiều dài cây (mm)','Số cây','Các đoạn (mm)','Tổng dùng (mm)','Thừa (mm)','Loại thừa']];
   const det=[['Loại ống','Cây số','Nguồn','Mẫu','Thứ tự cắt','Chiều dài (mm)','Mã đoạn']];
   Gs.forEach(g=>{
     const c=g.cfg;
-    sum.push([g.type,c.stock,c.kerf,g.nPieces,+(g.totalLen/1000).toFixed(3),g.nBars,g.nRem,g.LB,+(g.eff*100).toFixed(1),c.uw||'',c.uw?+(g.nBars*c.stock/1000*c.uw).toFixed(1):'',+(g.keep/1000).toFixed(3),+(g.scrap/1000).toFixed(3)]);
+    sum.push([g.type,c.stock,c.kerf,g.nPieces,+(g.totalLen/1000).toFixed(3),g.nBars,g.nRem,g.LB,+(g.eff*100).toFixed(1),c.uw||'',c.uw?+(g.totalLen/1000*c.uw).toFixed(1):'',c.uw?+(g.nBars*c.stock/1000*c.uw).toFixed(1):'',+(g.keep/1000).toFixed(3),+(g.scrap/1000).toFixed(3)]);
     let barNo=0;
     g.patterns.forEach((p,pi)=>{
       const kind=p.leftover>=c.reuse && p.leftover>0?'Giữ lại':(p.leftover>0?'Phế':'');
@@ -618,7 +630,7 @@ async function exportXlsxPlain(){
   const {sum,pat,det}=tables();
   const wb=XLSX.utils.book_new();
   const add=(rows,name,cols)=>{ const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=cols.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,name); };
-  add(sum,'Tong hop',[40,12,10,9,13,10,12,12,11,8,16,13,11]);
+  add(sum,'Tong hop',[40,12,10,9,13,10,12,12,11,8,16,16,13,11]);
   add(pat,'So do cat',[40,9,10,12,8,44,13,10,10]);
   add(det,'Chi tiet tung cay',[40,8,10,9,10,13,34]);
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
@@ -700,11 +712,11 @@ async function exportXlsx(){
  
     // Tong hop
     const s1=wb.addWorksheet('Tong hop',{views:[{state:'frozen',ySplit:1}]});
-    head(s1,sum[0],[40,12,10,9,13,10,12,12,11,8,16,13,11]);
+    head(s1,sum[0],[40,12,10,9,13,10,12,12,11,8,16,16,13,11]);
     sum.slice(1).forEach(r=>{ const row=s1.addRow(r); row.eachCell({includeEmpty:true},line); row.getCell(9).numFmt='0.0'; center(row,[2,3,4,6,7,8,9,10]); });
     const n1=sum.length;
     const tot=s1.addRow(['TỔNG CỘNG']);
-    [4,5,6,7,8,11,12,13].forEach(c=>{ const L=String.fromCharCode(64+c); tot.getCell(c).value={formula:`SUM(${L}2:${L}${n1})`}; });
+    [4,5,6,7,8,11,12,13,14].forEach(c=>{ const L=String.fromCharCode(64+c); tot.getCell(c).value={formula:`SUM(${L}2:${L}${n1})`}; });
     tot.eachCell({includeEmpty:true},c=>{ c.font={...FONT,bold:true}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2C2'}}; });
  
     // So do cat
